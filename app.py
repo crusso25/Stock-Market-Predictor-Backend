@@ -76,8 +76,8 @@ def predict_endpoint():
     # Predict for tomorrow
     last_data = sp500.iloc[-1:]  # Get the most recent data point
     tomorrow_prediction = model.predict_proba(last_data[new_predictors])[:, 1]
-    tomorrow_prediction = int(tomorrow_prediction >= 0.6)  
-    
+    tomorrow_prediction = int(tomorrow_prediction >= 0.6) 
+
     return jsonify({
         "prediction_counts": prediction_counts,
         "precision_score": precision,
