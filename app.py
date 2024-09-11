@@ -9,17 +9,14 @@ app = Flask(__name__)
 CORS(app)
 
 def prepare_data():
-    # Download S&P 500 historical data
     sp500 = yf.Ticker("^GSPC")
     sp500 = sp500.history(period="max")
 
-    # Prepare data for the model
-    sp500 = sp500.drop(columns=["Dividends", "Stock Splits"])  # Remove unnecessary columns
+    sp500 = sp500.drop(columns=["Dividends", "Stock Splits"])
     sp500["Tomorrow"] = sp500["Close"].shift(-1)
     sp500["Target"] = (sp500["Tomorrow"] > sp500["Close"]).astype(int)
     sp500 = sp500.loc["1990-01-01":].copy()
 
-    # Adding more features based on different horizons
     horizons = [2, 5, 60, 250, 1000]
     new_predictors = []
 
@@ -59,25 +56,20 @@ def backtest(data, model, predictors, start=2500, step=250):
 
 @app.route('/predict', methods=['GET'])
 def predict_endpoint():
-    # Prepare data and model
     sp500, new_predictors = prepare_data()
     model = RandomForestClassifier(n_estimators=200, min_samples_split=50, random_state=1)
 
-    # Perform backtest with new predictors
     predictions = backtest(sp500, model, new_predictors)
 
-    # Calculate prediction counts and precision score
     prediction_counts = predictions["Predictions"].value_counts().to_dict()
     precision = precision_score(predictions["Target"], predictions["Predictions"])
 
-    # Convert all predictions and actual outcomes to a dictionary format
     all_results = predictions.reset_index().to_dict(orient="records")
 
-    # Predict for tomorrow
-    last_data = sp500.iloc[-1:]  # Get the most recent data point
+    last_data = sp500.iloc[-1:]
     tomorrow_prediction = model.predict_proba(last_data[new_predictors])[:, 1]
-    tomorrow_prediction = int(tomorrow_prediction >= 0.6) 
-
+    tomorrow_prediction = int(tomorrow_prediction >= 0.6)
+    
     return jsonify({
         "prediction_counts": prediction_counts,
         "precision_score": precision,
